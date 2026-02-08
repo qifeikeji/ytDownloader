@@ -280,7 +280,7 @@ function renderCookieEntries() {
 	const entries = loadCookieEntries();
 	const selectedId = getSelectedCookieEntryId();
 
-	const __(/** @type {string} */ key) =>
+	const __ = (/** @type {string} */ key) =>
 		// @ts-ignore
 		(window.i18n && window.i18n.__(key)) || key;
 

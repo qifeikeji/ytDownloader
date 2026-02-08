@@ -6,6 +6,13 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title id="title" data-translate="preferences">Preferences</title>
+    <script>
+        // Theme fallback: keep page readable even if preferences.js fails to load
+        try {
+            const theme = localStorage.getItem("theme") || "frappe";
+            document.documentElement.setAttribute("theme", theme);
+        } catch (_) { }
+    </script>
     <link rel="stylesheet" href="../assets/css/extra.css">
 
     <script src="../translations/i18n-init.js" defer></script>
