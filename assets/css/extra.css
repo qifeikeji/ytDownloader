@@ -371,9 +371,44 @@ select {
 	gap: 10px;
 	flex: 0 0 auto;
 }
+
+/* Make the selector more obvious: square checkbox-like radio with checkmark */
+.cookieSelect {
+	appearance: none;
+	-webkit-appearance: none;
+	width: 22px;
+	height: 22px;
+	border: 2px solid rgba(255, 255, 255, 0.25);
+	border-radius: 5px;
+	background: var(--box-main);
+	cursor: pointer;
+	display: inline-grid;
+	place-items: center;
+}
+:root[theme="light"] .cookieSelect {
+	border-color: rgba(0, 0, 0, 0.25);
+}
+.cookieSelect:checked {
+	border-color: var(--greenBtn);
+	background: rgba(34, 197, 94, 0.15);
+}
+.cookieSelect:checked::after {
+	content: "";
+	width: 10px;
+	height: 6px;
+	border-left: 3px solid var(--greenBtn);
+	border-bottom: 3px solid var(--greenBtn);
+	transform: rotate(-45deg);
+	margin-top: -1px;
+}
+.cookieSelect:focus-visible {
+	outline: 2px solid rgba(84, 171, 222, 0.7);
+	outline-offset: 2px;
+}
 .cookiePathRow .pathInput {
 	flex: 1 1 auto;
 	min-width: 0;
+	width: 100%;
 	padding: 10px;
 	border: none;
 	outline: none;
@@ -381,6 +416,8 @@ select {
 	background: var(--box-main);
 	color: var(--text);
 	font-family: "JetBrains";
+	box-sizing: border-box;
+	height: 40px;
 }
 .cookiePathRow .mid {
 	flex: 1 1 auto;

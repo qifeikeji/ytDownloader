@@ -393,6 +393,7 @@ function renderCookieEntries() {
 		const radio = document.createElement("input");
 		radio.type = "radio";
 		radio.name = "cookieEntrySelected";
+		radio.className = "cookieSelect";
 		radio.checked = entry.id === selectedId;
 		radio.addEventListener("change", () => {
 			setSelectedCookieEntryId(entry.id);
