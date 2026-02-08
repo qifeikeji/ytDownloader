@@ -79,6 +79,8 @@ const CONSTANTS = {
 		CLOSE_TO_TRAY: "closeToTray",
 		YT_DLP_CUSTOM_ARGS: "customYtDlpArgs",
 		DOWNLOAD_LAYOUT: "downloadLayout",
+		DOWNLOAD_GRID_COLUMNS: "downloadGridColumns",
+		DOWNLOAD_GRID_ITEM_HEIGHT: "downloadGridItemHeight",
 	},
 };
 
@@ -124,6 +126,8 @@ class YtDownloaderApp {
 				browserForCookies: "",
 				customYtDlpArgs: "",
 				downloadLayout: "list",
+				downloadGridColumns: 5,
+				downloadGridItemHeight: 240,
 			},
 			downloadControllers: new Map(),
 			downloadedItems: new Set(),
@@ -588,6 +592,25 @@ class YtDownloaderApp {
 			"list";
 		prefs.downloadLayout = layout === "grid" ? "grid" : "list";
 
+		const colsRaw = Number(
+			localStorage.getItem(CONSTANTS.LOCAL_STORAGE_KEYS.DOWNLOAD_GRID_COLUMNS) ||
+				"5"
+		);
+		prefs.downloadGridColumns =
+			Number.isFinite(colsRaw) && colsRaw >= 1
+				? Math.min(10, Math.floor(colsRaw))
+				: 5;
+
+		const heightRaw = Number(
+			localStorage.getItem(
+				CONSTANTS.LOCAL_STORAGE_KEYS.DOWNLOAD_GRID_ITEM_HEIGHT
+			) || "240"
+		);
+		prefs.downloadGridItemHeight =
+			Number.isFinite(heightRaw) && heightRaw >= 120
+				? Math.min(800, Math.floor(heightRaw))
+				: 240;
+
 		const maxDownloads = Number(
 			localStorage.getItem(CONSTANTS.LOCAL_STORAGE_KEYS.MAX_DOWNLOADS)
 		);
@@ -611,6 +634,26 @@ class YtDownloaderApp {
 		if (!listEl) return;
 		const isGrid = this.state.preferences.downloadLayout === "grid";
 		listEl.classList.toggle("downloads-grid", isGrid);
+		if (isGrid) this._applyGridSettings();
+	}
+
+	_applyGridSettings() {
+		const listEl = $(CONSTANTS.DOM_IDS.DOWNLOAD_LIST);
+		if (!listEl) return;
+
+		const prefCols = this.state.preferences.downloadGridColumns || 5;
+		// Responsive cap to avoid unreadably small cards
+		const w = window.innerWidth || 1200;
+		let maxCols = prefCols;
+		if (w <= 650) maxCols = Math.min(prefCols, 2);
+		else if (w <= 980) maxCols = Math.min(prefCols, 3);
+		else if (w <= 1200) maxCols = Math.min(prefCols, 4);
+
+		listEl.style.setProperty("--downloads-grid-columns", String(maxCols));
+		listEl.style.setProperty(
+			"--downloads-item-height",
+			`${this.state.preferences.downloadGridItemHeight || 240}px`
+		);
 	}
 
 	/**
@@ -751,9 +794,19 @@ class YtDownloaderApp {
 
 		// React to preference changes made in other windows (e.g. Preferences)
 		window.addEventListener("storage", (e) => {
-			if (e.key === CONSTANTS.LOCAL_STORAGE_KEYS.DOWNLOAD_LAYOUT) {
+			if (
+				e.key === CONSTANTS.LOCAL_STORAGE_KEYS.DOWNLOAD_LAYOUT ||
+				e.key === CONSTANTS.LOCAL_STORAGE_KEYS.DOWNLOAD_GRID_COLUMNS ||
+				e.key === CONSTANTS.LOCAL_STORAGE_KEYS.DOWNLOAD_GRID_ITEM_HEIGHT
+			) {
 				this._loadSettings();
 				this._applyDownloadLayout();
+			}
+		});
+
+		window.addEventListener("resize", () => {
+			if (this.state.preferences.downloadLayout === "grid") {
+				this._applyGridSettings();
 			}
 		});
 

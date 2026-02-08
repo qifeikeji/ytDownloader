@@ -313,7 +313,7 @@ img {
 /* Downloads grid layout (5 columns) */
 #list.downloads-grid {
 	display: grid;
-	grid-template-columns: repeat(5, minmax(0, 1fr));
+	grid-template-columns: repeat(var(--downloads-grid-columns, 5), minmax(0, 1fr));
 	gap: 12px;
 	width: 94%;
 	margin: 10px auto;
@@ -330,7 +330,7 @@ img {
 	flex-direction: column;
 	align-items: stretch;
 	justify-content: flex-start;
-	aspect-ratio: 1 / 1;
+	height: var(--downloads-item-height, 240px);
 	overflow: hidden;
 }
 
@@ -380,7 +380,11 @@ img {
 }
 
 #list.downloads-grid .itemSpeed {
-	display: none;
+	display: block;
+	padding: 0;
+	margin: 0;
+	font-size: 0.85rem;
+	opacity: 0.9;
 }
 
 #list.downloads-grid .itemProgress {
@@ -392,17 +396,7 @@ img {
 	width: 100%;
 }
 
-/* Responsive fallback for smaller screens */
-@media screen and (max-width: 1200px) {
-	#list.downloads-grid {
-		grid-template-columns: repeat(4, minmax(0, 1fr));
-	}
-}
-@media screen and (max-width: 980px) {
-	#list.downloads-grid {
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-	}
-}
+/* Responsive fallback for smaller screens: JS will usually override via CSS vars */
 @media screen and (max-width: 650px) {
 	#list.downloads-grid {
 		grid-template-columns: repeat(2, minmax(0, 1fr));

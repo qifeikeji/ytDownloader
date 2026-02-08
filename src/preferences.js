@@ -148,6 +148,41 @@ if (downloadLayoutSelect) {
 	});
 }
 
+// Grid columns
+const gridColumnsInput = getId("gridColumns");
+if (gridColumnsInput) {
+	const storedCols = Number(localStorage.getItem("downloadGridColumns") || "5");
+	gridColumnsInput.value = String(
+		Number.isFinite(storedCols) && storedCols >= 1 ? Math.min(10, storedCols) : 5
+	);
+
+	gridColumnsInput.addEventListener("input", () => {
+		const v = Number(gridColumnsInput.value);
+		const cols = Number.isFinite(v) && v >= 1 ? Math.min(10, Math.floor(v)) : 5;
+		localStorage.setItem("downloadGridColumns", String(cols));
+	});
+}
+
+// Grid item height (px)
+const gridItemHeightInput = getId("gridItemHeight");
+if (gridItemHeightInput) {
+	const storedHeight = Number(
+		localStorage.getItem("downloadGridItemHeight") || "240"
+	);
+	gridItemHeightInput.value = String(
+		Number.isFinite(storedHeight) && storedHeight >= 120
+			? Math.min(800, Math.floor(storedHeight))
+			: 240
+	);
+
+	gridItemHeightInput.addEventListener("input", () => {
+		const v = Number(gridItemHeightInput.value);
+		const h =
+			Number.isFinite(v) && v >= 120 ? Math.min(800, Math.floor(v)) : 240;
+		localStorage.setItem("downloadGridItemHeight", String(h));
+	});
+}
+
 // Browser preferences
 let browser = localStorage.getItem("browser");
 if (browser) {
