@@ -78,6 +78,7 @@ const CONSTANTS = {
 		AUTO_UPDATE: "autoUpdate",
 		CLOSE_TO_TRAY: "closeToTray",
 		YT_DLP_CUSTOM_ARGS: "customYtDlpArgs",
+		DOWNLOAD_LAYOUT: "downloadLayout",
 	},
 };
 
@@ -122,6 +123,7 @@ class YtDownloaderApp {
 				proxy: "",
 				browserForCookies: "",
 				customYtDlpArgs: "",
+				downloadLayout: "list",
 			},
 			downloadControllers: new Map(),
 			downloadedItems: new Set(),
@@ -151,6 +153,7 @@ class YtDownloaderApp {
 			console.log("JS runtime path:", this.state.jsRuntimePath);
 
 			this._loadSettings();
+			this._applyDownloadLayout();
 			this._addEventListeners();
 
 			// Signal to the main process that the renderer is ready for links
@@ -580,6 +583,10 @@ class YtDownloaderApp {
 				CONSTANTS.LOCAL_STORAGE_KEYS.YT_DLP_CUSTOM_ARGS
 			) || "";
 		prefs.configPath = localStorage.getItem(CONSTANTS.LOCAL_STORAGE_KEYS.CONFIG_PATH) || "";
+		const layout =
+			localStorage.getItem(CONSTANTS.LOCAL_STORAGE_KEYS.DOWNLOAD_LAYOUT) ||
+			"list";
+		prefs.downloadLayout = layout === "grid" ? "grid" : "list";
 
 		const maxDownloads = Number(
 			localStorage.getItem(CONSTANTS.LOCAL_STORAGE_KEYS.MAX_DOWNLOADS)
@@ -597,6 +604,13 @@ class YtDownloaderApp {
 			this.state.downloadDir = downloadDir;
 			$(CONSTANTS.DOM_IDS.PATH_DISPLAY).textContent = downloadDir;
 		}
+	}
+
+	_applyDownloadLayout() {
+		const listEl = $(CONSTANTS.DOM_IDS.DOWNLOAD_LIST);
+		if (!listEl) return;
+		const isGrid = this.state.preferences.downloadLayout === "grid";
+		listEl.classList.toggle("downloads-grid", isGrid);
 	}
 
 	/**
@@ -735,6 +749,14 @@ class YtDownloaderApp {
 			this._handleTimeInputChange
 		);
 
+		// React to preference changes made in other windows (e.g. Preferences)
+		window.addEventListener("storage", (e) => {
+			if (e.key === CONSTANTS.LOCAL_STORAGE_KEYS.DOWNLOAD_LAYOUT) {
+				this._loadSettings();
+				this._applyDownloadLayout();
+			}
+		});
+
 		this._updateSliderUI(null);
 	}
 
@@ -753,6 +775,7 @@ class YtDownloaderApp {
 	 */
 	async getInfo(url) {
 		this._loadSettings();
+		this._applyDownloadLayout();
 		this._defaultVideoToggle();
 		this._resetUIForNewLink();
 		this.state.videoInfo.url = url;

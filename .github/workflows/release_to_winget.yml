@@ -1,27 +1,13 @@
-name: Publish to WinGet
+name: Publish to WinGet (disabled)
+
 on:
-  release:
-    types: [released]
   workflow_dispatch:
 
 jobs:
-  publish:
-    runs-on: windows-latest
+  disabled:
+    runs-on: ubuntu-latest
     steps:
-      - name: Get latest release
-        id: get_latest
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const latest = await github.rest.repos.getLatestRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo
-            });
-            core.setOutput("tag", latest.data.tag_name);
-
-      - uses: vedantmgoyal9/winget-releaser@main
-        with:
-          identifier: aandrew-me.ytDownloader
-          installers-regex: '\.msi$'
-          token: ${{ secrets.WINGET_TOKEN }}
-          release-tag: ${{ steps.get_latest.outputs.tag }}
+      - name: Disabled
+        run: |
+          echo "This workflow has been disabled."
+          echo "Reason: we only build Linux AppImage and upload it as a workflow artifact (no GitHub Release publishing)."

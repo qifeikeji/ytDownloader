@@ -309,6 +309,105 @@ img {
 	align-items: center;
 	justify-content: space-between;
 }
+
+/* Downloads grid layout (5 columns) */
+#list.downloads-grid {
+	display: grid;
+	grid-template-columns: repeat(5, minmax(0, 1fr));
+	gap: 12px;
+	width: 94%;
+	margin: 10px auto;
+	align-items: stretch;
+	justify-items: stretch;
+}
+
+/* Make download items square in grid mode */
+#list.downloads-grid .item {
+	width: 100%;
+	margin: 0;
+	border-radius: 12px;
+	padding: 10px;
+	flex-direction: column;
+	align-items: stretch;
+	justify-content: flex-start;
+	aspect-ratio: 1 / 1;
+	overflow: hidden;
+}
+
+#list.downloads-grid .itemIconBox {
+	width: 100%;
+	flex: 1 1 auto;
+	align-items: stretch;
+	justify-content: flex-start;
+}
+
+#list.downloads-grid .itemIcon {
+	width: 100%;
+	height: 100%;
+	max-width: none;
+	max-height: none;
+	margin: 0;
+	border-radius: 10px;
+	object-fit: cover;
+}
+
+#list.downloads-grid .itemType {
+	display: none;
+}
+
+#list.downloads-grid .itemBody {
+	width: 100%;
+	height: auto;
+	display: flex;
+	flex: 0 0 auto;
+	flex-direction: column;
+	justify-content: flex-end;
+	gap: 6px;
+	padding-top: 8px;
+}
+
+#list.downloads-grid .itemTitle {
+	padding: 0;
+	margin: 0;
+	font-weight: 600;
+	font-size: 0.95rem;
+	line-height: 1.25rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+}
+
+#list.downloads-grid .itemSpeed {
+	display: none;
+}
+
+#list.downloads-grid .itemProgress {
+	padding: 0;
+	margin: 0;
+}
+
+#list.downloads-grid .custom-progress {
+	width: 100%;
+}
+
+/* Responsive fallback for smaller screens */
+@media screen and (max-width: 1200px) {
+	#list.downloads-grid {
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+	}
+}
+@media screen and (max-width: 980px) {
+	#list.downloads-grid {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+}
+@media screen and (max-width: 650px) {
+	#list.downloads-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
 .playlistItem {
 	display: flex;
 	position: relative;

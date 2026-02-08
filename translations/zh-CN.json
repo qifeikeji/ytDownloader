@@ -1,5 +1,8 @@
 {
 	"preferences": "设置",
+	"downloadLayout": "下载列表布局",
+	"layoutList": "列表",
+	"layoutGrid": "网格",
 	"about": "關於",
 	"downloadLocation": "下載位置",
 	"currentDownloadLocation": "目前下載位置 - ",

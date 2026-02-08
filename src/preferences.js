@@ -136,6 +136,18 @@ function changeLanguage() {
 	}
 }
 
+// Download layout (list/grid)
+const downloadLayoutSelect = getId("downloadLayout");
+if (downloadLayoutSelect) {
+	const storedLayout = localStorage.getItem("downloadLayout") || "list";
+	downloadLayoutSelect.value = storedLayout === "grid" ? "grid" : "list";
+
+	downloadLayoutSelect.addEventListener("change", () => {
+		const value = downloadLayoutSelect.value === "grid" ? "grid" : "list";
+		localStorage.setItem("downloadLayout", value);
+	});
+}
+
 // Browser preferences
 let browser = localStorage.getItem("browser");
 if (browser) {

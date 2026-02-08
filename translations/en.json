@@ -1,5 +1,8 @@
 {
 	"preferences": "Preferences",
+	"downloadLayout": "Download layout",
+	"layoutList": "List",
+	"layoutGrid": "Grid",
 	"about": "About",
 	"downloadLocation": "Download location",
 	"currentDownloadLocation": "Current download location - ",
