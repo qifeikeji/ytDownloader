@@ -10,6 +10,8 @@
 	"copyDownloadThumbnail": "Copy thumbnail",
 	"openContainingFolder": "Open containing folder",
 	"openWithDefaultPlayer": "Open with default player",
+	"editConfigFile": "Edit config",
+	"noConfigSelected": "No config file selected",
 	"about": "About",
 	"downloadLocation": "Download location",
 	"currentDownloadLocation": "Current download location - ",

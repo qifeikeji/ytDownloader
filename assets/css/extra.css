@@ -222,6 +222,32 @@ input[type="text"],
 #configBtn {
 	display: inline-block;
 }
+#editConfigBtn {
+	display: inline-block;
+}
+#configOpts .configBtnRow {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+}
+
+.blueBtn {
+	padding: 10px;
+	margin: 0 20px;
+	border: none;
+	border-radius: 10px;
+	font-size: large;
+	color: white;
+	background-color: var(--blueBtn);
+	cursor: pointer;
+	position: relative;
+	outline: none;
+}
+.blueBtn:active {
+	background-color: var(--blueBtn-bottom);
+}
 #configOpts {
 	display: flex;
 	flex-direction: column;

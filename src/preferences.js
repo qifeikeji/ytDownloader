@@ -89,10 +89,36 @@ getId("configBtn").addEventListener("click", () => {
 	ipcRenderer.send("select-config", "");
 });
 
+const editConfigBtn = getId("editConfigBtn");
+function updateEditConfigBtnState() {
+	if (!editConfigBtn) return;
+	const p = localStorage.getItem("configPath") || "";
+	editConfigBtn.disabled = !(configCheck?.checked && p);
+}
+
+if (editConfigBtn) {
+	editConfigBtn.addEventListener("click", () => {
+		const configPath = localStorage.getItem("configPath") || "";
+		if (!configPath) {
+			showPopup(i18n.__("noConfigSelected"), true);
+			return;
+		}
+		try {
+			accessSync(configPath, constants.R_OK);
+			shell.openPath(configPath);
+		} catch (_e) {
+			showPopup(i18n.__("unableToAccessDir"), true);
+		}
+	});
+}
+
 ipcRenderer.on("configPath", (event, configPath) => {
 	console.log(configPath);
 	localStorage.setItem("configPath", configPath);
 	getId("configPath").textContent = configPath;
+	configCheck.checked = true;
+	getId("configOpts").style.display = "flex";
+	updateEditConfigBtnState();
 });
 
 const configCheck = getId("configCheck");
@@ -103,6 +129,7 @@ configCheck.addEventListener("change", (event) => {
 		getId("configOpts").style.display = "none";
 		localStorage.setItem("configPath", "");
 	}
+	updateEditConfigBtnState();
 });
 
 const configPath = localStorage.getItem("configPath");
@@ -111,6 +138,7 @@ if (configPath) {
 	configCheck.checked = true;
 	getId("configOpts").style.display = "flex";
 }
+updateEditConfigBtnState();
 
 // Language settings
 
@@ -139,7 +167,7 @@ function changeLanguage() {
 // Download layout (list/grid)
 const downloadLayoutSelect = getId("downloadLayout");
 if (downloadLayoutSelect) {
-	const storedLayout = localStorage.getItem("downloadLayout") || "list";
+	const storedLayout = localStorage.getItem("downloadLayout") || "grid";
 	downloadLayoutSelect.value = storedLayout === "grid" ? "grid" : "list";
 
 	downloadLayoutSelect.addEventListener("change", () => {

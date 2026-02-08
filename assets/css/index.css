@@ -327,18 +327,19 @@ img {
 	margin: 0;
 	border-radius: 12px;
 	padding: 10px;
-	flex-direction: column;
-	align-items: stretch;
-	justify-content: flex-start;
 	height: var(--downloads-item-height, 240px);
 	overflow: hidden;
+	/* Prioritize text area; let thumbnail shrink when height is small */
+	display: grid;
+	grid-template-rows: minmax(0, 1fr) auto;
+	align-items: stretch;
 }
 
 #list.downloads-grid .itemIconBox {
 	width: 100%;
-	flex: 1 1 auto;
-	align-items: stretch;
-	justify-content: flex-start;
+	min-height: 0; /* allow shrinking */
+	overflow: hidden;
+	border-radius: 10px;
 }
 
 #list.downloads-grid .itemIcon {
@@ -347,7 +348,7 @@ img {
 	max-width: none;
 	max-height: none;
 	margin: 0;
-	border-radius: 10px;
+	border-radius: 0;
 	object-fit: cover;
 }
 
@@ -364,6 +365,7 @@ img {
 	justify-content: flex-end;
 	gap: 6px;
 	padding-top: 8px;
+	min-height: 0;
 }
 
 #list.downloads-grid .itemTitle {

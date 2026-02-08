@@ -595,7 +595,7 @@ class YtDownloaderApp {
 		prefs.configPath = localStorage.getItem(CONSTANTS.LOCAL_STORAGE_KEYS.CONFIG_PATH) || "";
 		const layout =
 			localStorage.getItem(CONSTANTS.LOCAL_STORAGE_KEYS.DOWNLOAD_LAYOUT) ||
-			"list";
+			"grid";
 		prefs.downloadLayout = layout === "grid" ? "grid" : "list";
 
 		const colsRaw = Number(

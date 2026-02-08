@@ -10,6 +10,8 @@
 	"copyDownloadThumbnail": "复制缩略图",
 	"openContainingFolder": "打开所在文件夹",
 	"openWithDefaultPlayer": "用默认播放器打开",
+	"editConfigFile": "编辑设定档",
+	"noConfigSelected": "未选择设定档",
 	"about": "關於",
 	"downloadLocation": "下載位置",
 	"currentDownloadLocation": "目前下載位置 - ",
