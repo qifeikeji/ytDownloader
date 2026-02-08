@@ -76,12 +76,15 @@
     </div>
 
 
-    <button id="pasteUrl">
-        <span id="pasteText" data-translate="pasteText">Click to paste video link from clipboard</span>
-        <span class="paste-keys">
-            <span class="key" id="pasteCtrlKey">Ctrl</span><span class="key">V</span>
-        </span>
-    </button>
+    <div id="overlayControls">
+        <button class="blueBtn" id="clearBtn" data-translate="clearDownloads">Clear Downloads</button>
+        <button id="pasteUrl">
+            <span id="pasteText" data-translate="pasteText">Click to paste video link from clipboard</span>
+            <span class="paste-keys">
+                <span class="key" id="pasteCtrlKey">Ctrl</span><span class="key">V</span>
+            </span>
+        </button>
+    </div>
 
 
     <div id="loadingWrapper">
@@ -235,8 +238,6 @@
 
     <!-- Downloads list -->
     <div id="list"></div>
-
-    <button class="blueBtn" id="clearBtn" data-translate="clearDownloads">Clear Downloads</button>
 
     <div id="goToTop"></div>
 
