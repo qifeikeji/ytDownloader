@@ -314,6 +314,9 @@ img {
 #list.downloads-grid {
 	display: grid;
 	grid-template-columns: repeat(var(--downloads-grid-columns, 5), minmax(0, 1fr));
+	/* spacing between cards (mainly horizontal) */
+	column-gap: 10px;
+	row-gap: 10px;
 	gap: 10px;
 	width: 94%;
 	margin: 10px auto;
@@ -683,29 +686,6 @@ input[type="number"]::-webkit-outer-spin-button {
 	font-weight: bold;
 }
 
-/* Bottom-right overlay controls */
-#overlayControls {
-	position: fixed;
-	right: 18px;
-	bottom: 18px;
-	z-index: 9998;
-	display: flex;
-	flex-direction: column;
-	gap: 10px;
-	align-items: flex-end;
-	pointer-events: none; /* allow clicks only on children */
-}
-#overlayControls > * {
-	pointer-events: auto;
-}
-#overlayControls #pasteUrl {
-	margin-top: 0;
-	max-width: min(520px, calc(100vw - 36px));
-}
-#overlayControls #clearBtn {
-	margin: 0;
-}
-
 #pasteUrl:hover,
 #pasteLink:hover {
 	background: linear-gradient(
@@ -918,8 +898,8 @@ body::-webkit-scrollbar-thumb {
 #goToTop {
 	display: none;
 	position: fixed;
-	bottom: 150px; /* avoid overlapping bottom-right overlay buttons */
-	right: 18px;
+	bottom: 10px;
+	right: 10px;
 	z-index: 2;
 	border: none;
 	outline: none;
