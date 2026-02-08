@@ -4,6 +4,9 @@ const {constants} = require("fs/promises");
 const {homedir, platform} = require("os");
 const {join} = require("path");
 const {mkdirSync, accessSync, promises, existsSync, readdirSync, statSync} = require("fs");
+const http = require("http");
+const https = require("https");
+const {fileURLToPath} = require("url");
 const {execSync, spawn} = require("child_process");
 
 const CONSTANTS = {
@@ -929,10 +932,18 @@ class YtDownloaderApp {
 			}, !meta.title)
 		);
 		this._contextMenuEl.appendChild(
-			mkItem(i18n.__("copyDownloadThumbnail"), async () => {
-				await this._copyThumbnailToClipboard(meta.thumbnail);
+			mkItem(i18n.__("copyDownloadThumbnailImage"), async () => {
+				const src = meta.thumbnail || this._getThumbnailSrcForItem(id);
+				await this._copyThumbnailImageToClipboard(src);
 				this._showPopup(i18n.__("copiedText"), false);
-			}, !meta.thumbnail)
+			}, !(meta.thumbnail || this._getThumbnailSrcForItem(id)))
+		);
+		this._contextMenuEl.appendChild(
+			mkItem(i18n.__("copyDownloadThumbnailUrl"), async () => {
+				const src = meta.thumbnail || this._getThumbnailSrcForItem(id);
+				if (src) clipboard.writeText(String(src));
+				this._showPopup(i18n.__("copiedText"), false);
+			}, !(meta.thumbnail || this._getThumbnailSrcForItem(id)))
 		);
 		this._contextMenuEl.appendChild(document.createElement("div")).className =
 			"context-menu-sep";
@@ -949,23 +960,88 @@ class YtDownloaderApp {
 	}
 
 	/**
-	 * @param {string} thumbnailUrl
+	 * Get current thumbnail src from DOM (works for placeholder too).
+	 * @param {string} id
+	 * @returns {string}
 	 */
-	async _copyThumbnailToClipboard(thumbnailUrl) {
-		if (!thumbnailUrl) return;
-		try {
-			const res = await fetch(thumbnailUrl);
-			const buf = Buffer.from(await res.arrayBuffer());
-			const img = nativeImage.createFromBuffer(buf);
-			if (!img.isEmpty()) {
-				clipboard.writeImage(img);
-				return;
-			}
-		} catch (e) {
-			// fallback below
+	_getThumbnailSrcForItem(id) {
+		const el = $(id);
+		// @ts-ignore
+		const img = el?.querySelector?.("img.itemIcon");
+		// @ts-ignore
+		return img?.src || "";
+	}
+
+	/**
+	 * Copy thumbnail image bytes to clipboard as an image (not URL).
+	 * Uses Node http/https to avoid CORS issues in renderer fetch().
+	 * @param {string} src
+	 */
+	async _copyThumbnailImageToClipboard(src) {
+		const s = (src || "").trim();
+		if (!s) return;
+
+		// data URL
+		if (s.startsWith("data:")) {
+			const img = nativeImage.createFromDataURL(s);
+			if (!img.isEmpty()) clipboard.writeImage(img);
+			return;
 		}
-		// Fallback: copy URL text if image copy fails
-		clipboard.writeText(String(thumbnailUrl));
+
+		// file URL
+		if (s.startsWith("file://")) {
+			const p = fileURLToPath(s);
+			const img = nativeImage.createFromPath(p);
+			if (!img.isEmpty()) clipboard.writeImage(img);
+			return;
+		}
+
+		// absolute local path
+		if (s.startsWith("/")) {
+			const img = nativeImage.createFromPath(s);
+			if (!img.isEmpty()) clipboard.writeImage(img);
+			return;
+		}
+
+		// app relative path like ../assets/images/thumb.png
+		if (s.startsWith("./") || s.startsWith("../")) {
+			const p = join(__dirname, "..", s);
+			const img = nativeImage.createFromPath(p);
+			if (!img.isEmpty()) clipboard.writeImage(img);
+			return;
+		}
+
+		// http(s)
+		if (s.startsWith("http://") || s.startsWith("https://")) {
+			const buf = await this._downloadUrlToBuffer(s);
+			const img = nativeImage.createFromBuffer(buf);
+			if (!img.isEmpty()) clipboard.writeImage(img);
+			return;
+		}
+	}
+
+	/**
+	 * @param {string} url
+	 * @returns {Promise<Buffer>}
+	 */
+	_downloadUrlToBuffer(url) {
+		return new Promise((resolve, reject) => {
+			const client = url.startsWith("https://") ? https : http;
+			client
+				.get(url, (res) => {
+					if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+						// follow redirects
+						return resolve(this._downloadUrlToBuffer(res.headers.location));
+					}
+					if (res.statusCode !== 200) {
+						return reject(new Error(`HTTP ${res.statusCode}`));
+					}
+					const chunks = [];
+					res.on("data", (d) => chunks.push(d));
+					res.on("end", () => resolve(Buffer.concat(chunks)));
+				})
+				.on("error", reject);
+		});
 	}
 
 	// --- Public Methods ---
@@ -1185,7 +1261,7 @@ class YtDownloaderApp {
 		this.state.downloadItemMeta.set(randomId, {
 			url: job.url,
 			title: job.title,
-			thumbnail: job.thumbnail,
+			thumbnail: job.thumbnail || "../assets/images/thumb.png",
 			fullPath: "",
 		});
 		const itemHTML = `
@@ -1768,7 +1844,7 @@ class YtDownloaderApp {
 		this.state.downloadItemMeta.set(randomId, {
 			url: job.url,
 			title: job.title,
-			thumbnail: job.thumbnail,
+			thumbnail: job.thumbnail || "../assets/images/thumb.png",
 			fullPath: "",
 		});
 		const itemHTML = `
