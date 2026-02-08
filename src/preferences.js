@@ -1,5 +1,6 @@
-const {ipcRenderer, shell} = require("electron");
+const {ipcRenderer, shell, clipboard} = require("electron");
 const {accessSync, constants} = require("original-fs");
+const {readdirSync, statSync} = require("fs");
 const {join} = require("path");
 const {homedir} = require("os");
 
@@ -60,6 +61,9 @@ document.addEventListener("translations-loaded", () => {
 
 		getId("flatpakTxt").style.display = "block";
 	}
+
+	// re-render dynamic sections with translated labels
+	renderCookieEntries();
 });
 
 getId("back").addEventListener("click", () => {
@@ -221,6 +225,313 @@ getId("browser").addEventListener("change", () => {
 	browser = getId("browser").value;
 	localStorage.setItem("browser", browser);
 });
+
+// --- Custom cookies paths (multi entries) ---
+const COOKIES_ENTRIES_KEY = "customCookiesPathEntries";
+const COOKIES_SELECTED_KEY = "customCookiesPathSelected";
+
+/**
+ * @returns {Array<{id:string,browser:string,path:string}>}
+ */
+function loadCookieEntries() {
+	try {
+		const raw = localStorage.getItem(COOKIES_ENTRIES_KEY) || "[]";
+		const arr = JSON.parse(raw);
+		if (!Array.isArray(arr)) return [];
+		return arr
+			.filter((x) => x && typeof x.id === "string")
+			.map((x) => ({
+				id: String(x.id),
+				browser: String(x.browser || "chromium"),
+				path: String(x.path || ""),
+			}));
+	} catch {
+		return [];
+	}
+}
+
+/**
+ * @param {Array<{id:string,browser:string,path:string}>} entries
+ */
+function saveCookieEntries(entries) {
+	localStorage.setItem(COOKIES_ENTRIES_KEY, JSON.stringify(entries));
+}
+
+function getSelectedCookieEntryId() {
+	return localStorage.getItem(COOKIES_SELECTED_KEY) || "";
+}
+
+function setSelectedCookieEntryId(id) {
+	localStorage.setItem(COOKIES_SELECTED_KEY, id || "");
+}
+
+function ensureBrowserCustomSelected() {
+	const browserSelect = getId("browser");
+	if (!browserSelect) return;
+	browserSelect.value = "custom";
+	localStorage.setItem("browser", "custom");
+}
+
+function renderCookieEntries() {
+	const container = getId("customCookiesPaths");
+	if (!container) return;
+	container.innerHTML = "";
+
+	const entries = loadCookieEntries();
+	const selectedId = getSelectedCookieEntryId();
+
+	const __(/** @type {string} */ key) =>
+		// @ts-ignore
+		(window.i18n && window.i18n.__(key)) || key;
+
+	const fileExists = (p) => {
+		try {
+			accessSync(p, constants.F_OK);
+			return true;
+		} catch {
+			return false;
+		}
+	};
+	const isDir = (p) => {
+		try {
+			return statSync(p).isDirectory();
+		} catch {
+			return false;
+		}
+	};
+
+	const chromiumFamily = new Set([
+		"chromium",
+		"chrome",
+		"brave",
+		"edge",
+		"vivaldi",
+		"opera",
+	]);
+	const firefoxFamily = new Set(["firefox", "librewolf", "waterfox"]);
+
+	/**
+	 * @param {string} browser
+	 * @param {string} inputPath
+	 * @returns {{cookiesPath: string, profilePath: string} | null}
+	 */
+	function resolveCookiesPath(browser, inputPath) {
+		const p = (inputPath || "").trim();
+		if (!p) return null;
+
+		const chromiumCookies = (profileDir) => {
+			const c1 = join(profileDir, "Network", "Cookies");
+			const c2 = join(profileDir, "Cookies");
+			if (fileExists(c1)) return c1;
+			if (fileExists(c2)) return c2;
+			return "";
+		};
+
+		if (chromiumFamily.has(browser)) {
+			if (isDir(p)) {
+				const direct = chromiumCookies(p);
+				if (direct) return {cookiesPath: direct, profilePath: p};
+
+				const def = join(p, "Default");
+				const defCookies = chromiumCookies(def);
+				if (defCookies) return {cookiesPath: defCookies, profilePath: def};
+
+				try {
+					const subs = readdirSync(p);
+					for (const name of subs) {
+						if (!name.startsWith("Profile")) continue;
+						const candidate = join(p, name);
+						const c = chromiumCookies(candidate);
+						if (c) return {cookiesPath: c, profilePath: candidate};
+					}
+				} catch {}
+			}
+			return null;
+		}
+
+		if (firefoxFamily.has(browser)) {
+			if (isDir(p)) {
+				const direct = join(p, "cookies.sqlite");
+				if (fileExists(direct)) return {cookiesPath: direct, profilePath: p};
+				try {
+					const subs = readdirSync(p);
+					let first = "";
+					let preferred = "";
+					for (const name of subs) {
+						const candidate = join(p, name);
+						if (!isDir(candidate)) continue;
+						const cookieDb = join(candidate, "cookies.sqlite");
+						if (!fileExists(cookieDb)) continue;
+						if (!first) first = candidate;
+						if (name.includes("default-release")) {
+							preferred = candidate;
+							break;
+						}
+					}
+					const chosen = preferred || first;
+					if (chosen) {
+						return {
+							cookiesPath: join(chosen, "cookies.sqlite"),
+							profilePath: chosen,
+						};
+					}
+				} catch {}
+			}
+			return null;
+		}
+
+		return null;
+	}
+
+	entries.forEach((entry) => {
+		const row = document.createElement("div");
+		row.className = "cookiePathRow";
+
+		const left = document.createElement("div");
+		left.className = "left";
+
+		const radio = document.createElement("input");
+		radio.type = "radio";
+		radio.name = "cookieEntrySelected";
+		radio.checked = entry.id === selectedId;
+		radio.addEventListener("change", () => {
+			setSelectedCookieEntryId(entry.id);
+			ensureBrowserCustomSelected();
+			renderCookieEntries();
+		});
+
+		const browserSel = document.createElement("select");
+		browserSel.value = entry.browser;
+		[
+			{v: "chromium", t: "Chromium"},
+			{v: "chrome", t: "Chrome"},
+			{v: "brave", t: "Brave"},
+			{v: "edge", t: "Edge"},
+			{v: "vivaldi", t: "Vivaldi"},
+			{v: "firefox", t: "Firefox"},
+			{v: "librewolf", t: "LibreWolf"},
+			{v: "waterfox", t: "Waterfox"},
+		].forEach((opt) => {
+			const o = document.createElement("option");
+			o.value = opt.v;
+			o.textContent = opt.t;
+			browserSel.appendChild(o);
+		});
+		browserSel.value = entry.browser;
+		browserSel.addEventListener("change", () => {
+			const next = loadCookieEntries().map((e) =>
+				e.id === entry.id ? {...e, browser: browserSel.value} : e
+			);
+			saveCookieEntries(next);
+			renderCookieEntries();
+		});
+
+		left.appendChild(radio);
+		left.appendChild(browserSel);
+
+		const input = document.createElement("input");
+		input.className = "pathInput";
+		input.type = "text";
+		input.placeholder = "/home/user/.config/chromium/Default";
+		input.value = entry.path || "";
+		input.addEventListener("input", () => {
+			const next = loadCookieEntries().map((e) =>
+				e.id === entry.id ? {...e, path: input.value} : e
+			);
+			saveCookieEntries(next);
+			if (getSelectedCookieEntryId() === entry.id) {
+				// Re-render to update status
+				renderCookieEntries();
+			}
+		});
+
+		const status = document.createElement("div");
+		status.className = "cookieStatus";
+		const isSelected = entry.id === selectedId;
+		if (isSelected && input.value.trim()) {
+			const found = resolveCookiesPath(entry.browser, input.value);
+			if (found) {
+				status.classList.add("ok");
+				status.textContent =
+					__( "cookiesFound") +
+					"\n" +
+					__( "cookiesFoundAt") +
+					" " +
+					found.cookiesPath;
+			} else {
+				status.classList.add("warn");
+				status.textContent =
+					__( "cookiesNotFound") + "\n" + __( "cookiesNotFoundHelp");
+			}
+		} else {
+			status.style.display = "none";
+		}
+
+		const right = document.createElement("div");
+		right.className = "right";
+
+		const pasteBtn = document.createElement("button");
+		pasteBtn.type = "button";
+		pasteBtn.className = "blueBtn smallBtn";
+		pasteBtn.textContent = __("paste") || "Paste";
+		pasteBtn.addEventListener("click", () => {
+			const txt = clipboard.readText().trim();
+			if (!txt) return;
+			input.value = txt;
+			const next = loadCookieEntries().map((e) =>
+				e.id === entry.id ? {...e, path: txt} : e
+			);
+			saveCookieEntries(next);
+			if (getSelectedCookieEntryId() === entry.id) renderCookieEntries();
+		});
+
+		const delBtn = document.createElement("button");
+		delBtn.type = "button";
+		delBtn.className = "redBtn smallBtn deleteBtn";
+		delBtn.textContent = __("remove") || "Remove";
+		delBtn.addEventListener("click", () => {
+			const next = loadCookieEntries().filter((e) => e.id !== entry.id);
+			saveCookieEntries(next);
+			if (getSelectedCookieEntryId() === entry.id) {
+				setSelectedCookieEntryId("");
+			}
+			renderCookieEntries();
+		});
+
+		right.appendChild(pasteBtn);
+		right.appendChild(delBtn);
+
+		row.appendChild(left);
+		const mid = document.createElement("div");
+		mid.className = "mid";
+		mid.appendChild(input);
+		mid.appendChild(status);
+		row.appendChild(mid);
+		row.appendChild(right);
+		container.appendChild(row);
+	});
+}
+
+const addCookiesPathBtn = getId("addCookiesPath");
+if (addCookiesPathBtn) {
+	addCookiesPathBtn.addEventListener("click", () => {
+		const entries = loadCookieEntries();
+		const id = "c_" + Math.random().toString(36).slice(2, 10);
+		entries.push({id, browser: "chromium", path: ""});
+		saveCookieEntries(entries);
+		renderCookieEntries();
+	});
+}
+
+// Keep in sync if user switches away from custom browser
+getId("browser")?.addEventListener("change", () => {
+	if (getId("browser").value !== "custom") {
+		setSelectedCookieEntryId("");
+		renderCookieEntries();
+	}
+});
+
+renderCookieEntries();
 
 // Handling preferred video quality
 let preferredVideoQuality = localStorage.getItem("preferredVideoQuality");

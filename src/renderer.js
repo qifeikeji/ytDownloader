@@ -3,7 +3,7 @@ const {default: YTDlpWrap} = require("yt-dlp-wrap-plus");
 const {constants} = require("fs/promises");
 const {homedir, platform} = require("os");
 const {join} = require("path");
-const {mkdirSync, accessSync, promises, existsSync} = require("fs");
+const {mkdirSync, accessSync, promises, existsSync, readdirSync, statSync} = require("fs");
 const {execSync, spawn} = require("child_process");
 
 const CONSTANTS = {
@@ -1063,14 +1063,14 @@ class YtDownloaderApp {
 		return new Promise((resolve, reject) => {
 			const {proxy, browserForCookies, configPath} =
 				this.state.preferences;
+			const cookiesArgs = this._buildCookiesArgs();
 			const args = [
 				"-j",
 				"--no-playlist",
 				"--no-warnings",
 				proxy ? "--proxy" : "",
 				proxy,
-				browserForCookies ? "--cookies-from-browser" : "",
-				browserForCookies,
+				...cookiesArgs,
 				this.state.jsRuntimePath
 					? `--no-js-runtimes --js-runtime ${this.state.jsRuntimePath}`
 					: "",
@@ -1296,8 +1296,7 @@ class YtDownloaderApp {
 		const baseArgs = [
 			"--no-playlist",
 			"--no-mtime",
-			browserForCookies ? "--cookies-from-browser" : "",
-			browserForCookies,
+			...this._buildCookiesArgs(),
 			proxy ? "--proxy" : "",
 			proxy,
 			configPath ? "--config-location" : "",
@@ -1352,6 +1351,109 @@ class YtDownloaderApp {
 		downloadArgs.push(`"${url}"`);
 
 		return {downloadArgs, finalFilename, finalExt: ext};
+	}
+
+	/**
+	 * Builds cookie args for yt-dlp based on preferences.
+	 * Supports built-in browser selection and custom path entries.
+	 * @returns {string[]}
+	 */
+	_buildCookiesArgs() {
+		const browser = this.state.preferences.browserForCookies || "";
+		if (!browser) return [];
+
+		if (browser !== "custom") {
+			return ["--cookies-from-browser", browser];
+		}
+
+		// custom path mode
+		const entriesRaw = localStorage.getItem("customCookiesPathEntries") || "[]";
+		const selectedId = localStorage.getItem("customCookiesPathSelected") || "";
+		let entries = [];
+		try {
+			entries = JSON.parse(entriesRaw);
+		} catch {
+			entries = [];
+		}
+		if (!Array.isArray(entries) || !selectedId) return [];
+		const entry = entries.find((e) => e && e.id === selectedId);
+		if (!entry || !entry.path || !entry.browser) return [];
+
+		const resolvedProfile = this._resolveCookieProfilePath(
+			String(entry.browser),
+			String(entry.path)
+		);
+		const browserSpec = `${String(entry.browser)}:${resolvedProfile}`;
+		return ["--cookies-from-browser", browserSpec];
+	}
+
+	/**
+	 * Resolve a user-provided path into a browser profile directory.
+	 * User can provide either base directory or profile directory.
+	 * @param {string} browser
+	 * @param {string} inputPath
+	 * @returns {string}
+	 */
+	_resolveCookieProfilePath(browser, inputPath) {
+		const p = (inputPath || "").trim();
+		if (!p) return p;
+
+		const isDir = (x) => {
+			try {
+				return statSync(x).isDirectory();
+			} catch {
+				return false;
+			}
+		};
+		const hasFile = (x) => existsSync(x);
+
+		const isChromiumProfile = (dir) =>
+			isDir(dir) &&
+			(hasFile(join(dir, "Cookies")) || hasFile(join(dir, "Network", "Cookies")));
+
+		const isFirefoxProfile = (dir) =>
+			isDir(dir) && hasFile(join(dir, "cookies.sqlite"));
+
+		const chromiumFamily = new Set([
+			"chromium",
+			"chrome",
+			"brave",
+			"edge",
+			"vivaldi",
+			"opera",
+		]);
+		const firefoxFamily = new Set(["firefox", "librewolf", "waterfox"]);
+
+		if (chromiumFamily.has(browser)) {
+			if (isChromiumProfile(p)) return p;
+			if (isChromiumProfile(join(p, "Default"))) return join(p, "Default");
+			try {
+				const subs = readdirSync(p);
+				const candidates = subs
+					.filter((name) => name.startsWith("Profile"))
+					.map((name) => join(p, name))
+					.filter((dir) => isChromiumProfile(dir));
+				if (candidates.length) return candidates[0];
+			} catch {}
+			return p;
+		}
+
+		if (firefoxFamily.has(browser)) {
+			if (isFirefoxProfile(p)) return p;
+			// base dir: ~/.mozilla/firefox or flatpak equivalent
+			try {
+				const subs = readdirSync(p)
+					.map((name) => join(p, name))
+					.filter((dir) => isFirefoxProfile(dir));
+				const preferred = subs.find((dir) => dir.includes("default-release"));
+				if (preferred) return preferred;
+				if (subs.length) return subs[0];
+			} catch {}
+			return p;
+		}
+
+		// unknown browser type: pass through
+		return p;
 	}
 
 	/**

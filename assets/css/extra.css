@@ -339,6 +339,89 @@ select {
 	position: relative;
 	width: 160px;
 }
+
+.prefBoxCol {
+	flex-direction: column !important;
+	align-items: flex-start;
+	gap: 10px;
+}
+.prefBoxCol .hint {
+	margin: 0;
+	opacity: 0.85;
+	font-size: 0.95rem;
+	line-height: 1.35rem;
+	text-align: left;
+}
+
+.cookiePathRow {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 10px;
+	border-radius: 10px;
+	background: var(--box-toggle);
+	margin-top: 8px;
+	box-sizing: border-box;
+}
+.cookiePathRow .left {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex: 0 0 auto;
+}
+.cookiePathRow .pathInput {
+	flex: 1 1 auto;
+	min-width: 0;
+	padding: 10px;
+	border: none;
+	outline: none;
+	border-radius: 8px;
+	background: var(--box-main);
+	color: var(--text);
+	font-family: "JetBrains";
+}
+.cookiePathRow .mid {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.cookieStatus {
+	white-space: pre-line;
+	font-size: 0.85rem;
+	line-height: 1.2rem;
+	opacity: 0.95;
+	text-align: left;
+}
+.cookieStatus.ok {
+	color: var(--greenBtn);
+}
+.cookieStatus.warn {
+	color: var(--redBtn);
+}
+.cookiePathRow .right {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex: 0 0 auto;
+}
+.cookiePathRow .smallBtn {
+	padding: 10px 12px;
+	margin: 0;
+	border-radius: 10px;
+	font-size: medium;
+}
+.cookiePathRow .deleteBtn {
+	background: var(--redBtn);
+}
+.cookiePathsActions {
+	width: 100%;
+	display: flex;
+	justify-content: flex-start;
+}
 #browserInfo {
 	cursor: pointer;
 }
