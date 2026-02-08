@@ -1,4 +1,4 @@
-const {shell, ipcRenderer, clipboard} = require("electron");
+const {shell, ipcRenderer, clipboard, nativeImage} = require("electron");
 const {default: YTDlpWrap} = require("yt-dlp-wrap-plus");
 const {constants} = require("fs/promises");
 const {homedir, platform} = require("os");
@@ -132,7 +132,13 @@ class YtDownloaderApp {
 			downloadControllers: new Map(),
 			downloadedItems: new Set(),
 			downloadQueue: [],
+			downloadItemMeta: new Map(),
 		};
+
+		/** @type {HTMLElement | null} */
+		this._contextMenuEl = null;
+		/** @type {string | null} */
+		this._contextMenuActiveId = null;
 	}
 
 	/**
@@ -810,7 +816,156 @@ class YtDownloaderApp {
 			}
 		});
 
+		// Downloads list context menu (works for both list & grid items)
+		const listEl = $(CONSTANTS.DOM_IDS.DOWNLOAD_LIST);
+		listEl?.addEventListener("contextmenu", (e) =>
+			this._onDownloadItemContextMenu(e)
+		);
+
 		this._updateSliderUI(null);
+	}
+
+	/**
+	 * @param {MouseEvent} e
+	 */
+	_onDownloadItemContextMenu(e) {
+		// @ts-ignore
+		const itemEl = e.target?.closest?.(".item");
+		if (!itemEl || !itemEl.id) return;
+
+		e.preventDefault();
+		e.stopPropagation();
+
+		this._ensureContextMenu();
+		this._contextMenuActiveId = itemEl.id;
+		this._renderContextMenuForItem(itemEl.id);
+		this._showContextMenuAt(e.clientX, e.clientY);
+	}
+
+	_ensureContextMenu() {
+		if (this._contextMenuEl) return;
+		const el = document.createElement("div");
+		el.id = "downloadContextMenu";
+		el.className = "context-menu";
+		el.style.display = "none";
+		el.addEventListener("click", (e) => e.stopPropagation());
+		document.body.appendChild(el);
+		this._contextMenuEl = el;
+
+		// Global hide handlers
+		document.addEventListener("click", () => this._hideContextMenu());
+		window.addEventListener("scroll", () => this._hideContextMenu(), true);
+		document.addEventListener("keydown", (e) => {
+			if (e.key === "Escape") this._hideContextMenu();
+		});
+	}
+
+	_hideContextMenu() {
+		if (!this._contextMenuEl) return;
+		this._contextMenuEl.style.display = "none";
+		this._contextMenuActiveId = null;
+	}
+
+	/**
+	 * @param {number} x
+	 * @param {number} y
+	 */
+	_showContextMenuAt(x, y) {
+		if (!this._contextMenuEl) return;
+		const el = this._contextMenuEl;
+		el.style.display = "block";
+		el.style.left = `${x}px`;
+		el.style.top = `${y}px`;
+
+		// Clamp to viewport
+		const rect = el.getBoundingClientRect();
+		let left = x;
+		let top = y;
+		if (rect.right > window.innerWidth) left = Math.max(8, x - rect.width);
+		if (rect.bottom > window.innerHeight)
+			top = Math.max(8, y - rect.height);
+		el.style.left = `${left}px`;
+		el.style.top = `${top}px`;
+	}
+
+	/**
+	 * @param {string} id
+	 */
+	_renderContextMenuForItem(id) {
+		if (!this._contextMenuEl) return;
+		const meta = this.state.downloadItemMeta.get(id) || {};
+		const hasFile = Boolean(meta.fullPath);
+
+		const mkItem = (label, onClick, disabled = false) => {
+			const btn = document.createElement("button");
+			btn.type = "button";
+			btn.className = "context-menu-item";
+			btn.textContent = label;
+			btn.disabled = disabled;
+			btn.addEventListener("click", async () => {
+				if (btn.disabled) return;
+				this._hideContextMenu();
+				try {
+					await onClick();
+				} catch (err) {
+					console.error(err);
+					this._showPopup(i18n.__("errorClickForDetails") || "Error", true);
+				}
+			});
+			return btn;
+		};
+
+		this._contextMenuEl.innerHTML = "";
+		this._contextMenuEl.appendChild(
+			mkItem(i18n.__("copyDownloadUrl"), async () => {
+				if (meta.url) clipboard.writeText(String(meta.url));
+				this._showPopup(i18n.__("copiedText"), false);
+			}, !meta.url)
+		);
+		this._contextMenuEl.appendChild(
+			mkItem(i18n.__("copyDownloadTitle"), async () => {
+				if (meta.title) clipboard.writeText(String(meta.title));
+				this._showPopup(i18n.__("copiedText"), false);
+			}, !meta.title)
+		);
+		this._contextMenuEl.appendChild(
+			mkItem(i18n.__("copyDownloadThumbnail"), async () => {
+				await this._copyThumbnailToClipboard(meta.thumbnail);
+				this._showPopup(i18n.__("copiedText"), false);
+			}, !meta.thumbnail)
+		);
+		this._contextMenuEl.appendChild(document.createElement("div")).className =
+			"context-menu-sep";
+		this._contextMenuEl.appendChild(
+			mkItem(i18n.__("openContainingFolder"), async () => {
+				shell.showItemInFolder(meta.fullPath);
+			}, !hasFile)
+		);
+		this._contextMenuEl.appendChild(
+			mkItem(i18n.__("openWithDefaultPlayer"), async () => {
+				await shell.openPath(meta.fullPath);
+			}, !hasFile)
+		);
+	}
+
+	/**
+	 * @param {string} thumbnailUrl
+	 */
+	async _copyThumbnailToClipboard(thumbnailUrl) {
+		if (!thumbnailUrl) return;
+		try {
+			const res = await fetch(thumbnailUrl);
+			const buf = Buffer.from(await res.arrayBuffer());
+			const img = nativeImage.createFromBuffer(buf);
+			if (!img.isEmpty()) {
+				clipboard.writeImage(img);
+				return;
+			}
+		} catch (e) {
+			// fallback below
+		}
+		// Fallback: copy URL text if image copy fails
+		clipboard.writeText(String(thumbnailUrl));
 	}
 
 	// --- Public Methods ---
@@ -1027,6 +1182,12 @@ class YtDownloaderApp {
 	_queueDownload(job) {
 		const randomId = "queue_" + Math.random().toString(36).substring(2, 12);
 		this.state.downloadQueue.push({...job, queueId: randomId});
+		this.state.downloadItemMeta.set(randomId, {
+			url: job.url,
+			title: job.title,
+			thumbnail: job.thumbnail,
+			fullPath: "",
+		});
 		const itemHTML = `
             <div class="item" id="${randomId}">
                 <div class="itemIconBox">
@@ -1502,6 +1663,12 @@ class YtDownloaderApp {
 	 * Creates the initial UI element for a new download.
 	 */
 	_createDownloadUI(randomId, job) {
+		this.state.downloadItemMeta.set(randomId, {
+			url: job.url,
+			title: job.title,
+			thumbnail: job.thumbnail,
+			fullPath: "",
+		});
 		const itemHTML = `
             <div class="item" id="${randomId}">
                 <div class="itemIconBox">
@@ -1580,6 +1747,12 @@ class YtDownloaderApp {
 
 		const fullFilename = `${filename}.${ext}`;
 		const fullPath = join(this.state.downloadDir, fullFilename);
+		const meta = this.state.downloadItemMeta.get(randomId) || {};
+		this.state.downloadItemMeta.set(randomId, {
+			...meta,
+			fullPath,
+			thumbnail: meta.thumbnail || thumbnail,
+		});
 
 		progressEl.innerHTML = ""; // Clear progress bar
 		const link = document.createElement("b");
@@ -1713,6 +1886,7 @@ class YtDownloaderApp {
 
 		// If it has been downloaded, remove from the set
 		this.state.downloadedItems.delete(id);
+		this.state.downloadItemMeta.delete(id);
 
 		this._fadeAndRemoveItem(id);
 		this._updateClearAllButton();
